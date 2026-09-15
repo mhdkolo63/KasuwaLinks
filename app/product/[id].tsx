@@ -119,9 +119,11 @@ export default function ProductDetailScreen() {
                 <Text style={styles.badgeText}>{category.name}</Text>
               </View>
             )}
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{product.condition.replace('-', ' ')}</Text>
-            </View>
+            {product.condition && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{product.condition.replace('-', ' ')}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>

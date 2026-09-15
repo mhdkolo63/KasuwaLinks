@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAuthContext } from '@/context/AuthContext';
 import { useSupabaseQuery } from '@/hooks/useSupabase';
-import { getProductsBySeller } from '@/services/productService';
+import { getUserListings } from '@/services/productService';
 import type { ProductListItem } from '@/types/product';
 
 export default function EditListingsScreen() {
@@ -16,7 +16,7 @@ export default function EditListingsScreen() {
   const { user, isAuthenticated } = useAuthContext();
 
   const { data: products, isLoading } = useSupabaseQuery<ProductListItem[]>(
-    () => getProductsBySeller(user?.id ?? '', 0, 50),
+    () => getUserListings(0, 50),
     [user?.id]
   );
 

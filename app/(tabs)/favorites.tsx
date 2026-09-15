@@ -4,12 +4,27 @@ import { useRouter } from 'expo-router';
 import { Heart, LogIn } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Button } from '@/components/ui/Button';
+import { ProductCard } from '@/components/product/ProductCard';
 import { useAuthContext } from '@/context/AuthContext';
+import { useSupabaseQuery } from '@/hooks/useSupabase';
+import { getFavoriteProducts } from '@/services/favoriteService';
+import type { ProductListItem } from '@/types/product';
 
 export default function FavoritesScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuthContext();
+
+  const { data: products, isLoading, error } = useSupabaseQuery<ProductListItem[]>(
+    () => (isAuthenticated ? getFavoriteProducts() : Promise.resolve({ data: [], error: null })),
+    [isAuthenticated]
+  );
+
+  const handleProductPress = (id: string) => {
+    router.push({ pathname: '/product/[id]', params: { id } });
+  };
 
   if (!isAuthenticated) {
     return (
@@ -53,12 +68,28 @@ export default function FavoritesScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Favorites will be loaded from Supabase once the favorites table is created */}
-        <EmptyState
-          icon={Heart}
-          title="No saved items yet"
-          message="Tap the heart icon on any product to save it here for quick access later."
-        />
+        {isLoading ? (
+          <LoadingState message="Loading your saved items..." />
+        ) : error ? (
+          <ErrorState
+            message={error}
+            action={<Button label="Retry" onPress={() => {}} variant="outline" />}
+          />
+        ) : products && products.length > 0 ? (
+          <View style={styles.grid}>
+            {products.map((product) => (
+              <View key={product.id} style={styles.gridItem}>
+                <ProductCard product={product} onPress={handleProductPress} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            icon={Heart}
+            title="No saved items yet"
+            message="Tap the heart icon on any product to save it here for quick access later."
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -94,5 +125,15 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 12,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  gridItem: {
+    flex: 1,
+    minWidth: 160,
+    maxWidth: '48%',
   },
 });

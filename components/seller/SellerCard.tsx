@@ -1,5 +1,5 @@
 import { Pressable, View, Text, Image, StyleSheet } from 'react-native';
-import { MapPin, BadgeCheck, Star } from 'lucide-react-native';
+import { MapPin, BadgeCheck } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import type { Seller } from '@/types/seller';
 
@@ -27,7 +27,7 @@ export function SellerCard({ seller, onPress, listingCount }: SellerCardProps) {
       <View style={styles.info}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{seller.storeName}</Text>
-          {seller.verified && (
+          {seller.isVerified && (
             <BadgeCheck size={16} color={colors.primary} strokeWidth={2} />
           )}
         </View>
@@ -36,12 +36,6 @@ export function SellerCard({ seller, onPress, listingCount }: SellerCardProps) {
           <Text style={styles.location} numberOfLines={1}>{seller.location}</Text>
         </View>
         <View style={styles.statsRow}>
-          {seller.rating > 0 && (
-            <View style={styles.ratingRow}>
-              <Star size={12} color={colors.accent} strokeWidth={2} fill={colors.accent} />
-              <Text style={styles.stat}>{seller.rating.toFixed(1)}</Text>
-            </View>
-          )}
           {listingCount !== undefined && (
             <Text style={styles.stat}>{listingCount} listings</Text>
           )}

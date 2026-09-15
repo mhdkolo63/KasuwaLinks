@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, BadgeCheck, MapPin, Star } from 'lucide-react-native';
+import { ArrowLeft, BadgeCheck, MapPin } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductCard } from '@/components/product/ProductCard';
 import { useSupabaseQuery } from '@/hooks/useSupabase';
-import { getSellerById, getSellerByUserId } from '@/services/sellerService';
+import { getSellerById } from '@/services/sellerService';
 import { getProductsBySeller } from '@/services/productService';
 import { formatDate } from '@/utils/formatDate';
 import { useAuthContext } from '@/context/AuthContext';
@@ -74,7 +74,7 @@ export default function SellerProfileScreen() {
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.storeName}>{seller.storeName}</Text>
-              {seller.verified && <BadgeCheck size={20} color={colors.primary} strokeWidth={2} />}
+              {seller.isVerified && <BadgeCheck size={20} color={colors.primary} strokeWidth={2} />}
             </View>
             <Text style={styles.fullName}>{seller.fullName}</Text>
             <View style={styles.locationRow}>
@@ -86,21 +86,18 @@ export default function SellerProfileScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{seller.totalListings}</Text>
+            <Text style={styles.statValue}>{products?.length ?? 0}</Text>
             <Text style={styles.statLabel}>Listings</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{seller.totalSales}</Text>
-            <Text style={styles.statLabel}>Sales</Text>
+            <Text style={styles.statValue}>{seller.isVerified ? 'Yes' : 'No'}</Text>
+            <Text style={styles.statLabel}>Verified</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <View style={styles.ratingRow}>
-              <Star size={14} color={colors.accent} strokeWidth={2} fill={colors.accent} />
-              <Text style={styles.statValue}>{seller.rating.toFixed(1)}</Text>
-            </View>
-            <Text style={styles.statLabel}>Rating</Text>
+            <Text style={styles.statValue}>{seller.isSeller ? 'Yes' : 'No'}</Text>
+            <Text style={styles.statLabel}>Seller</Text>
           </View>
         </View>
 

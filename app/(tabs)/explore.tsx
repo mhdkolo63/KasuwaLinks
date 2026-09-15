@@ -1,13 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SlidersHorizontal } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
-import { APP_CONFIG } from '@/constants/config';
 import { CATEGORIES, getCategoryIcon } from '@/constants/categories';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { LocationChip } from '@/components/ui/LocationChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { PackageOpen } from 'lucide-react-native';
@@ -29,7 +27,6 @@ export default function ExploreScreen() {
 
   const [search, setSearch] = useState(params.search ?? '');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(params.categoryId);
-  const [selectedLocation, setSelectedLocation] = useState<string | undefined>();
   const [selectedCondition, setSelectedCondition] = useState<ProductCondition | undefined>();
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]['key']>('newest');
   const [showFilters, setShowFilters] = useState(false);
@@ -38,11 +35,10 @@ export default function ExploreScreen() {
     () => getProducts({
       search: search.trim() || undefined,
       categoryId: selectedCategory,
-      location: selectedLocation,
       condition: selectedCondition,
       sortBy,
     }),
-    [search, selectedCategory, selectedLocation, selectedCondition, sortBy]
+    [search, selectedCategory, selectedCondition, sortBy]
   );
 
   const handleProductPress = useCallback(
@@ -50,11 +46,10 @@ export default function ExploreScreen() {
     [router]
   );
 
-  const hasActiveFilters = Boolean(selectedCategory || selectedLocation || selectedCondition);
+  const hasActiveFilters = Boolean(selectedCategory || selectedCondition);
 
   const clearFilters = () => {
     setSelectedCategory(undefined);
-    setSelectedLocation(undefined);
     setSelectedCondition(undefined);
     setSearch('');
     setSortBy('newest');
@@ -113,25 +108,6 @@ export default function ExploreScreen() {
                 })}
               </View>
             </ScrollView>
-          </View>
-
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Location</Text>
-            <View style={styles.chipRow}>
-              <LocationChip
-                location="All"
-                selected={!selectedLocation}
-                onPress={() => setSelectedLocation(undefined)}
-              />
-              {APP_CONFIG.locations.map((loc) => (
-                <LocationChip
-                  key={loc}
-                  location={loc}
-                  selected={selectedLocation === loc}
-                  onPress={() => setSelectedLocation(selectedLocation === loc ? undefined : loc)}
-                />
-              ))}
-            </View>
           </View>
 
           <View style={styles.filterSection}>

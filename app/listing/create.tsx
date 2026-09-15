@@ -74,9 +74,7 @@ export default function CreateListingScreen() {
         currency: APP_CONFIG.currency.code,
         categoryId: categoryId!,
         condition,
-        location,
-      },
-      user.id
+      }
     );
     setLoading(false);
 

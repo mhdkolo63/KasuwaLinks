@@ -16,9 +16,16 @@ import {
   Package,
   type LucideIcon,
 } from 'lucide-react-native';
-import type { Category } from '@/types/product';
+import type { LucideIcon } from 'lucide-react-native';
 
-export const CATEGORIES: Category[] = [
+export interface LocalCategory {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+}
+
+export const CATEGORIES: LocalCategory[] = [
   { id: 'phones-tablets', name: 'Phones & Tablets', icon: 'Smartphone', description: 'Smartphones, tablets, and accessories' },
   { id: 'computers', name: 'Computers & Accessories', icon: 'Laptop', description: 'Laptops, desktops, and peripherals' },
   { id: 'electronics', name: 'Electronics', icon: 'Tv', description: 'TVs, audio, and electronic gadgets' },
@@ -58,6 +65,6 @@ export function getCategoryIcon(iconName: string): LucideIcon {
   return CATEGORY_ICON_MAP[iconName] ?? Package;
 }
 
-export function getCategoryById(id: string): Category | undefined {
+export function getCategoryById(id: string): LocalCategory | undefined {
   return CATEGORIES.find((c) => c.id === id);
 }
