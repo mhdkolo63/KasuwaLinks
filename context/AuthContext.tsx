@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import * as authService from '@/services/authService';
+import { createProfileIfMissing } from '@/services/sellerService';
 import type { SignUpData, SignInData, AuthResult } from '@/types/database';
 
 interface AuthContextValue {
@@ -48,7 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = useCallback((data: SignUpData) => authService.signUp(data), []);
+  const signUp = useCallback(async (data: SignUpData): Promise<AuthResult> => {
+    const result = await authService.signUp(data);
+    if (result.success && isSupabaseConfigured) {
+      const { data: sessionData } = await supabase!.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (userId) {
+        await createProfileIfMissing(userId, data.fullName, data.phone);
+      }
+    }
+    return result;
+  }, []);
   const signIn = useCallback((data: SignInData) => authService.signIn(data), []);
   const signOut = useCallback(() => authService.signOut(), []);
   const resetPassword = useCallback((email: string) => authService.resetPassword(email), []);

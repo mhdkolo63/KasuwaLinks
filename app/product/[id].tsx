@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,6 +19,7 @@ import { PriceLabel } from '@/components/ui/PriceLabel';
 import { SellerCard } from '@/components/seller/SellerCard';
 import { useSupabaseQuery } from '@/hooks/useSupabase';
 import { getProductById, incrementViews } from '@/services/productService';
+import { isFavorited, toggleFavorite } from '@/services/favoriteService';
 import { getCategoryById } from '@/constants/categories';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { useAuthContext } from '@/context/AuthContext';
@@ -29,11 +30,26 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isAuthenticated } = useAuthContext();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const { data: product, error, isLoading } = useSupabaseQuery<Product | null>(
     () => getProductById(id),
     [id]
   );
+
+  useEffect(() => {
+    if (isAuthenticated && id) {
+      isFavorited(id).then(({ data }) => setIsFavorite(data));
+    } else {
+      setIsFavorite(false);
+    }
+  }, [isAuthenticated, id]);
+
+  useEffect(() => {
+    if (product?.id) {
+      incrementViews(product.id);
+    }
+  }, [product?.id]);
 
   const category = product ? getCategoryById(product.categoryId) : undefined;
 
@@ -43,6 +59,20 @@ export default function ProductDetailScreen() {
       return;
     }
   }, [isAuthenticated, router]);
+
+  const handleToggleFavorite = useCallback(async () => {
+    if (!isAuthenticated) {
+      router.push('/(auth)/login');
+      return;
+    }
+    if (!id || favoriteLoading) return;
+    setFavoriteLoading(true);
+    const { data: newState, error: favError } = await toggleFavorite(id);
+    setFavoriteLoading(false);
+    if (!favError) {
+      setIsFavorite(newState);
+    }
+  }, [isAuthenticated, id, favoriteLoading, router]);
 
   if (isLoading) {
     return (
@@ -75,7 +105,7 @@ export default function ProductDetailScreen() {
           <ArrowLeft size={24} color={colors.text} strokeWidth={2} />
         </Pressable>
         <View style={styles.headerActions}>
-          <Pressable onPress={() => setIsFavorite((v) => !v)} hitSlop={8}>
+          <Pressable onPress={handleToggleFavorite} hitSlop={8} disabled={favoriteLoading}>
             <Heart
               size={22}
               color={isFavorite ? colors.error : colors.text}

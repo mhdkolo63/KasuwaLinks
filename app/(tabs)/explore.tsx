@@ -1,17 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { SlidersHorizontal } from 'lucide-react-native';
+import { SlidersHorizontal, PackageOpen } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { CATEGORIES, getCategoryIcon } from '@/constants/categories';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { PackageOpen } from 'lucide-react-native';
 import { ProductCard } from '@/components/product/ProductCard';
 import { useSupabaseQuery } from '@/hooks/useSupabase';
 import { getProducts } from '@/services/productService';
+import { getStates, getCitiesByState, type StateOption, type CityOption } from '@/services/locationService';
 import type { ProductListItem, ProductCondition } from '@/types/product';
 
 const SORT_OPTIONS = [
@@ -28,17 +28,39 @@ export default function ExploreScreen() {
   const [search, setSearch] = useState(params.search ?? '');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(params.categoryId);
   const [selectedCondition, setSelectedCondition] = useState<ProductCondition | undefined>();
+  const [selectedStateId, setSelectedStateId] = useState<string | undefined>();
+  const [selectedCityId, setSelectedCityId] = useState<string | undefined>();
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]['key']>('newest');
   const [showFilters, setShowFilters] = useState(false);
+
+  const { data: statesData } = useSupabaseQuery<StateOption[]>(
+    () => getStates(),
+    []
+  );
+
+  const [cities, setCities] = useState<CityOption[]>([]);
+
+  useEffect(() => {
+    if (selectedStateId) {
+      getCitiesByState(selectedStateId).then((result) => {
+        setCities(result.data);
+      });
+    } else {
+      setCities([]);
+      setSelectedCityId(undefined);
+    }
+  }, [selectedStateId]);
 
   const { data: products, isLoading } = useSupabaseQuery<ProductListItem[]>(
     () => getProducts({
       search: search.trim() || undefined,
       categoryId: selectedCategory,
       condition: selectedCondition,
+      stateId: selectedStateId,
+      cityId: selectedCityId,
       sortBy,
     }),
-    [search, selectedCategory, selectedCondition, sortBy]
+    [search, selectedCategory, selectedCondition, selectedStateId, selectedCityId, sortBy]
   );
 
   const handleProductPress = useCallback(
@@ -46,11 +68,13 @@ export default function ExploreScreen() {
     [router]
   );
 
-  const hasActiveFilters = Boolean(selectedCategory || selectedCondition);
+  const hasActiveFilters = Boolean(selectedCategory || selectedCondition || selectedStateId || selectedCityId);
 
   const clearFilters = () => {
     setSelectedCategory(undefined);
     setSelectedCondition(undefined);
+    setSelectedStateId(undefined);
+    setSelectedCityId(undefined);
     setSearch('');
     setSortBy('newest');
   };
@@ -109,6 +133,54 @@ export default function ExploreScreen() {
               </View>
             </ScrollView>
           </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>State</Text>
+            <View style={styles.chipRow}>
+              <Pressable
+                style={[styles.chip, !selectedStateId && styles.chipSelected]}
+                onPress={() => setSelectedStateId(undefined)}
+              >
+                <Text style={[styles.chipText, !selectedStateId && styles.chipTextSelected]}>All</Text>
+              </Pressable>
+              {(statesData ?? []).map((state) => (
+                <Pressable
+                  key={state.id}
+                  style={[styles.chip, selectedStateId === state.id && styles.chipSelected]}
+                  onPress={() => setSelectedStateId(selectedStateId === state.id ? undefined : state.id)}
+                >
+                  <Text style={[styles.chipText, selectedStateId === state.id && styles.chipTextSelected]}>
+                    {state.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {selectedStateId && cities.length > 0 && (
+            <View style={styles.filterSection}>
+              <Text style={styles.filterLabel}>City</Text>
+              <View style={styles.chipRow}>
+                <Pressable
+                  style={[styles.chip, !selectedCityId && styles.chipSelected]}
+                  onPress={() => setSelectedCityId(undefined)}
+                >
+                  <Text style={[styles.chipText, !selectedCityId && styles.chipTextSelected]}>All</Text>
+                </Pressable>
+                {cities.map((city) => (
+                  <Pressable
+                    key={city.id}
+                    style={[styles.chip, selectedCityId === city.id && styles.chipSelected]}
+                    onPress={() => setSelectedCityId(selectedCityId === city.id ? undefined : city.id)}
+                  >
+                    <Text style={[styles.chipText, selectedCityId === city.id && styles.chipTextSelected]}>
+                      {city.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>Condition</Text>
@@ -232,7 +304,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   filtersPanel: {
-    maxHeight: 300,
+    maxHeight: 380,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,

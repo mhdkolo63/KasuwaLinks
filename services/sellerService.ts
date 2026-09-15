@@ -4,6 +4,49 @@ import type { ProfileRow, StateRow, CityRow } from '@/types/database';
 import { mapProfileRowToSeller } from '@/types/seller';
 
 // =============================================================================
+// CREATE: PROFILE AFTER REGISTRATION (idempotent)
+// =============================================================================
+
+export async function createProfileIfMissing(
+  userId: string,
+  fullName: string,
+  phone?: string
+): Promise<{ data: Seller | null; error: string | null }> {
+  if (!isSupabaseConfigured) return { data: null, error: 'Supabase is not configured.' };
+
+  try {
+    const { data: existing } = await supabase!
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (existing) {
+      return getSellerById(userId);
+    }
+
+    const { error: insertError } = await supabase!
+      .from('profiles')
+      .insert({
+        id: userId,
+        full_name: fullName,
+        phone: phone ?? null,
+        is_seller: false,
+        is_verified: false,
+      });
+
+    if (insertError) return { data: null, error: insertError.message };
+
+    return getSellerById(userId);
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Failed to create profile.',
+    };
+  }
+}
+
+// =============================================================================
 // READ: SELLER PROFILE
 // =============================================================================
 
