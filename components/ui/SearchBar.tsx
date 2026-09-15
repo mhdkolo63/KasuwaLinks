@@ -8,6 +8,7 @@ interface SearchBarProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   onClear?: () => void;
+  onSubmit?: () => void;
   style?: ViewStyle;
 }
 
@@ -16,6 +17,7 @@ export function SearchBar({
   onChangeText,
   placeholder = 'Search products...',
   onClear,
+  onSubmit,
   style,
 }: SearchBarProps) {
   return (
@@ -29,6 +31,8 @@ export function SearchBar({
         style={styles.input}
         autoCapitalize="none"
         autoCorrect={false}
+        onSubmitEditing={onSubmit}
+        returnKeyType="search"
       />
       {value.length > 0 && onClear && (
         <Pressable onPress={onClear} hitSlop={8}>

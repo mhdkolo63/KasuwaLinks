@@ -13,11 +13,20 @@ import {
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { Button } from '@/components/ui/Button';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { useAuthContext } from '@/context/AuthContext';
+import { useSupabaseQuery } from '@/hooks/useSupabase';
+import { getCurrentProfile } from '@/services/sellerService';
+import type { Seller } from '@/types/seller';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, isAuthenticated, signOut } = useAuthContext();
+
+  const { data: sellerProfile, isLoading: profileLoading } = useSupabaseQuery<Seller | null>(
+    () => (isAuthenticated ? getCurrentProfile() : Promise.resolve({ data: null, error: null })),
+    [isAuthenticated, user?.id]
+  );
 
   const handleLogout = async () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -64,9 +73,10 @@ export default function ProfileScreen() {
     );
   }
 
-  const fullName = user?.user_metadata?.full_name ?? 'KasuwaLink User';
+  const fullName = sellerProfile?.fullName || (user?.user_metadata?.full_name ?? 'KasuwaLink User');
   const email = user?.email ?? '';
   const initials = fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  const isVerified = sellerProfile?.isVerified ?? false;
 
   const menuItems = [
     { icon: ShoppingBag, label: 'My Listings', onPress: () => router.push('/listing/edit') },
@@ -86,18 +96,25 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-          <View style={styles.profileInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
-              <BadgeCheck size={18} color={colors.primary} strokeWidth={2} />
+        {profileLoading ? (
+          <LoadingState message="Loading your profile..." />
+        ) : (
+          <View style={styles.profileHeader}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
-            <Text style={styles.email} numberOfLines={1}>{email}</Text>
+            <View style={styles.profileInfo}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
+                {isVerified && <BadgeCheck size={18} color={colors.primary} strokeWidth={2} />}
+              </View>
+              <Text style={styles.email} numberOfLines={1}>{email}</Text>
+              {sellerProfile?.location && sellerProfile.location !== 'Nigeria' && (
+                <Text style={styles.location}>{sellerProfile.location}</Text>
+              )}
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={styles.menuSection}>
           {menuItems.map((item, index) => {
@@ -196,6 +213,11 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14,
     color: colors.textSecondary,
+    marginTop: 2,
+  },
+  location: {
+    fontSize: 13,
+    color: colors.textTertiary,
     marginTop: 2,
   },
   menuSection: {

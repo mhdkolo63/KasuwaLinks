@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MapPin, ChevronDown } from 'lucide-react-native';
+import { MapPin, ChevronDown, PackageOpen } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { APP_CONFIG } from '@/constants/config';
 import { CATEGORIES, getCategoryIcon } from '@/constants/categories';
@@ -13,10 +13,12 @@ import { CategoryCard } from '@/components/ui/CategoryCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { PackageOpen } from 'lucide-react-native';
+import { ProductCard } from '@/components/product/ProductCard';
 import { useSupabaseQuery } from '@/hooks/useSupabase';
-import { getRecentProducts } from '@/services/productService';
+import { getRecentProducts, getFeaturedProducts } from '@/services/productService';
+import { getCategories } from '@/services/categoryService';
 import type { ProductListItem } from '@/types/product';
+import type { Category } from '@/types/product';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -25,10 +27,32 @@ export default function HomeScreen() {
   const [search, setSearch] = useState('');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
-  const { data: recentProducts, isLoading } = useSupabaseQuery<ProductListItem[]>(
+  const { data: dbCategories } = useSupabaseQuery<Category[]>(
+    () => getCategories(),
+    []
+  );
+
+  const { data: recentProducts, isLoading: recentLoading } = useSupabaseQuery<ProductListItem[]>(
     () => getRecentProducts(8),
     []
   );
+
+  const { data: featuredProducts, isLoading: featuredLoading } = useSupabaseQuery<ProductListItem[]>(
+    () => getFeaturedProducts(6),
+    []
+  );
+
+  const categories = dbCategories && dbCategories.length > 0
+    ? dbCategories
+    : CATEGORIES.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.id,
+        icon: c.icon,
+        description: c.description,
+        isActive: true,
+        sortOrder: 0,
+      }));
 
   const greeting = user ? `Hello, ${user.user_metadata?.full_name?.split(' ')[0] ?? 'there'}` : 'Welcome to KasuwaLink';
 
@@ -100,6 +124,7 @@ export default function HomeScreen() {
             onChangeText={setSearch}
             placeholder="Search for products..."
             onClear={() => setSearch('')}
+            onSubmit={handleSearchSubmit}
             style={styles.searchBar}
           />
 
@@ -110,7 +135,7 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.categoryRow}
             >
-              {CATEGORIES.map((category) => {
+              {categories.map((category) => {
                 const Icon = getCategoryIcon(category.icon);
                 return (
                   <CategoryCard
@@ -130,12 +155,28 @@ export default function HomeScreen() {
               actionLabel="View all"
               onActionPress={() => router.push('/(tabs)/explore')}
             />
-            <View style={styles.placeholderCard}>
-              <Text style={styles.placeholderTitle}>Featured products coming soon</Text>
-              <Text style={styles.placeholderText}>
-                Once listings are added to the marketplace, featured products will appear here.
-              </Text>
-            </View>
+            {featuredLoading ? (
+              <LoadingState message="Loading featured products..." />
+            ) : featuredProducts && featuredProducts.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.productRow}
+              >
+                {featuredProducts.map((product) => (
+                  <View key={product.id} style={styles.featuredItem}>
+                    <ProductCard product={product} onPress={handleProductPress} />
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.placeholderCard}>
+                <Text style={styles.placeholderTitle}>No featured products yet</Text>
+                <Text style={styles.placeholderText}>
+                  Featured products will appear here once sellers start listing items.
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -144,11 +185,15 @@ export default function HomeScreen() {
               actionLabel="View all"
               onActionPress={() => router.push('/(tabs)/explore')}
             />
-            {isLoading ? (
+            {recentLoading ? (
               <LoadingState message="Loading recent listings..." />
             ) : recentProducts && recentProducts.length > 0 ? (
-              <View style={styles.productList}>
-                {/* Products will be displayed via ProductGrid when data is available */}
+              <View style={styles.productGrid}>
+                {recentProducts.map((product) => (
+                  <View key={product.id} style={styles.gridItem}>
+                    <ProductCard product={product} onPress={handleProductPress} />
+                  </View>
+                ))}
               </View>
             ) : (
               <EmptyState
@@ -241,6 +286,13 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingRight: 16,
   },
+  productRow: {
+    gap: 12,
+    paddingRight: 16,
+  },
+  featuredItem: {
+    width: 160,
+  },
   placeholderCard: {
     padding: 24,
     backgroundColor: colors.surface,
@@ -261,7 +313,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 19,
   },
-  productList: {
+  productGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
+  },
+  gridItem: {
+    flex: 1,
+    minWidth: 160,
+    maxWidth: '48%',
   },
 });
