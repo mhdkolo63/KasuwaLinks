@@ -31,7 +31,7 @@ function ProductCardComponent({ product, onPress, compact = false }: ProductCard
             </Text>
           </View>
         )}
-        {product.featured && (
+        {product.isFeatured && (
           <View style={styles.featuredBadge}>
             <Text style={styles.featuredText}>Featured</Text>
           </View>
@@ -48,7 +48,7 @@ function ProductCardComponent({ product, onPress, compact = false }: ProductCard
         <View style={styles.metaRow}>
           <View style={styles.locationRow}>
             <MapPin size={11} color={colors.textTertiary} strokeWidth={2} />
-            <Text style={styles.location} numberOfLines={1}>{product.location}</Text>
+            <Text style={styles.location} numberOfLines={1}>{product.locationLabel || 'Nigeria'}</Text>
           </View>
           <Text style={styles.time}>{formatRelativeTime(product.createdAt)}</Text>
         </View>

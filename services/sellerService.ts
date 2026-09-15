@@ -1,19 +1,29 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import type { Seller, CreateSellerInput } from '@/types/seller';
+import type { Seller, UpdateSellerInput } from '@/types/seller';
+import type { ProfileRow, StateRow, CityRow } from '@/types/database';
+import { mapProfileRowToSeller } from '@/types/seller';
+
+// =============================================================================
+// READ: SELLER PROFILE
+// =============================================================================
 
 export async function getSellerById(id: string): Promise<{ data: Seller | null; error: string | null }> {
   if (!isSupabaseConfigured) return { data: null, error: 'Supabase is not configured.' };
 
   try {
     const { data, error } = await supabase!
-      .from('sellers')
+      .from('profiles')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) return { data: null, error: error.message };
+    if (!data) return { data: null, error: 'Seller not found.' };
 
-    return { data: data as unknown as Seller, error: null };
+    const profile = data as ProfileRow;
+    const locationLabel = await resolveLocationLabel(profile.state_id, profile.city_id);
+
+    return { data: mapProfileRowToSeller(profile, locationLabel), error: null };
   } catch (err) {
     return {
       data: null,
@@ -22,90 +32,100 @@ export async function getSellerById(id: string): Promise<{ data: Seller | null; 
   }
 }
 
-export async function getSellerByUserId(userId: string): Promise<{ data: Seller | null; error: string | null }> {
+export async function getCurrentProfile(): Promise<{ data: Seller | null; error: string | null }> {
   if (!isSupabaseConfigured) return { data: null, error: 'Supabase is not configured.' };
 
   try {
-    const { data, error } = await supabase!
-      .from('sellers')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    const { data: userData } = await supabase!.auth.getUser();
+    if (!userData.user) return { data: null, error: 'You must be signed in.' };
 
-    if (error) return { data: null, error: error.message };
-
-    return { data: data as unknown as Seller, error: null };
+    return getSellerById(userData.user.id);
   } catch (err) {
     return {
       data: null,
-      error: err instanceof Error ? err.message : 'Failed to fetch seller.',
+      error: err instanceof Error ? err.message : 'Failed to fetch your profile.',
     };
   }
 }
 
-export async function createSeller(
-  input: CreateSellerInput,
-  userId: string,
-  email: string
+// =============================================================================
+// UPDATE: CURRENT USER'S PROFILE
+// =============================================================================
+
+export async function updateCurrentProfile(
+  updates: UpdateSellerInput
 ): Promise<{ data: Seller | null; error: string | null }> {
   if (!isSupabaseConfigured) return { data: null, error: 'Supabase is not configured.' };
 
   try {
+    const { data: userData } = await supabase!.auth.getUser();
+    if (!userData.user) return { data: null, error: 'You must be signed in.' };
+
+    const updateData: Record<string, unknown> = {};
+    if (updates.fullName !== undefined) updateData.full_name = updates.fullName;
+    if (updates.username !== undefined) updateData.username = updates.username;
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
+    if (updates.bio !== undefined) updateData.bio = updates.bio;
+    if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl;
+    if (updates.stateId !== undefined) updateData.state_id = updates.stateId;
+    if (updates.cityId !== undefined) updateData.city_id = updates.cityId;
+    if (updates.isSeller !== undefined) updateData.is_seller = updates.isSeller;
+
     const { data, error } = await supabase!
-      .from('sellers')
-      .insert({
-        user_id: userId,
-        store_name: input.storeName,
-        full_name: input.fullName,
-        email,
-        phone: input.phone,
-        location: input.location,
-        bio: input.bio,
-        verified: false,
-        rating: 0,
-        total_listings: 0,
-        total_sales: 0,
-      })
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userData.user.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) return { data: null, error: error.message };
-    return { data: data as unknown as Seller, error: null };
+    if (!data) return { data: null, error: 'Profile not found.' };
+
+    const profile = data as ProfileRow;
+    const locationLabel = await resolveLocationLabel(profile.state_id, profile.city_id);
+
+    return { data: mapProfileRowToSeller(profile, locationLabel), error: null };
   } catch (err) {
     return {
       data: null,
-      error: err instanceof Error ? err.message : 'Failed to create seller profile.',
+      error: err instanceof Error ? err.message : 'Failed to update profile.',
     };
   }
 }
 
-export async function updateSeller(
-  id: string,
-  updates: Partial<CreateSellerInput>
-): Promise<{ data: Seller | null; error: string | null }> {
-  if (!isSupabaseConfigured) return { data: null, error: 'Supabase is not configured.' };
+// =============================================================================
+// HELPER: RESOLVE LOCATION LABEL FROM STATE + CITY
+// =============================================================================
+
+async function resolveLocationLabel(stateId: string | null, cityId: string | null): Promise<string> {
+  if (!stateId && !cityId) return 'Nigeria';
 
   try {
-    const { data, error } = await supabase!
-      .from('sellers')
-      .update({
-        store_name: updates.storeName,
-        full_name: updates.fullName,
-        phone: updates.phone,
-        location: updates.location,
-        bio: updates.bio,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    let label = '';
 
-    if (error) return { data: null, error: error.message };
-    return { data: data as unknown as Seller, error: null };
-  } catch (err) {
-    return {
-      data: null,
-      error: err instanceof Error ? err.message : 'Failed to update seller.',
-    };
+    if (cityId) {
+      const { data } = await supabase!
+        .from('cities')
+        .select('name')
+        .eq('id', cityId)
+        .maybeSingle();
+      if (data) label = (data as CityRow).name;
+    }
+
+    if (stateId) {
+      const { data } = await supabase!
+        .from('states')
+        .select('name')
+        .eq('id', stateId)
+        .maybeSingle();
+      if (data) {
+        const stateName = (data as StateRow).name;
+        label = label ? `${label}, ${stateName}` : stateName;
+      }
+    }
+
+    return label || 'Nigeria';
+  } catch {
+    return 'Nigeria';
   }
 }

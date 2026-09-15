@@ -108,7 +108,7 @@ export default function ProductDetailScreen() {
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <MapPin size={14} color={colors.textSecondary} strokeWidth={2} />
-              <Text style={styles.metaText}>{product.location}</Text>
+              <Text style={styles.metaText}>{product.locationLabel || 'Nigeria'}</Text>
             </View>
             <Text style={styles.metaText}>{formatRelativeTime(product.createdAt)}</Text>
           </View>
@@ -141,7 +141,7 @@ export default function ProductDetailScreen() {
                     <Text style={styles.sellerName}>Seller</Text>
                     <BadgeCheck size={16} color={colors.primary} strokeWidth={2} />
                   </View>
-                  <Text style={styles.sellerLocation}>{product.location}</Text>
+                  <Text style={styles.sellerLocation}>{product.locationLabel || 'Nigeria'}</Text>
                 </View>
                 <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />
               </View>

@@ -1,3 +1,7 @@
+// =============================================================================
+// LOCATION, FAVORITE, AND REPORT TYPES
+// =============================================================================
+
 export interface Location {
   id: string;
   city: string;
@@ -26,16 +30,16 @@ export interface Report {
   id: string;
   reporterId: string;
   productId?: string;
-  sellerId?: string;
+  reportedUserId?: string;
   reason: ReportReason;
-  description: string;
+  details?: string;
   status: ReportStatus;
   createdAt: string;
 }
 
 export interface CreateReportInput {
   productId?: string;
-  sellerId?: string;
+  reportedUserId?: string;
   reason: ReportReason;
-  description: string;
+  details?: string;
 }
